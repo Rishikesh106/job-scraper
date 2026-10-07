@@ -28,6 +28,7 @@ jobs:
       env:
         SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
         SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
+        JOBSCRAPER: ${{ secrets.JOBSCRAPER }}
         RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
         KEYWORDS: ${{ secrets.KEYWORDS }}
         LOCATIONS: ${{ secrets.LOCATIONS }}
@@ -44,3 +45,4 @@ jobs:
         name: jobs-cache
         path: jobs_cache.json
         retention-days: 7
+        if-no-files-found: ignore

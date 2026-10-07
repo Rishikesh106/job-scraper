@@ -26,26 +26,38 @@ def main():
     # Load environment variables
     load_dotenv()
 
-    # Get configuration
-    sender_email = os.getenv('SENDER_EMAIL')
-    sender_password = os.getenv('SENDER_PASSWORD')
-    receiver_email = os.getenv('RECEIVER_EMAIL')
+    # Get configuration with smart fallbacks
+    sender_email = os.getenv('SENDER_EMAIL') or 'rishiauradkar@gmail.com'
+    sender_password = os.getenv('SENDER_PASSWORD') or os.getenv('JOBSCRAPER')
+    receiver_email = os.getenv('RECEIVER_EMAIL') or sender_email
 
-    # Job search preferences
-    keywords = os.getenv('KEYWORDS', '').split(',')
-    locations = os.getenv('LOCATIONS', '').split(',')
+    # Job search preferences with defaults
+    raw_keywords = os.getenv('KEYWORDS')
+    if raw_keywords and raw_keywords.strip():
+        keywords = [k.strip() for k in raw_keywords.split(',') if k.strip()]
+    else:
+        keywords = [
+            'software developer', 'software engineer', 'python developer',
+            'full stack developer', 'backend developer', 'frontend developer',
+            'data analyst', 'machine learning'
+        ]
+
+    raw_locations = os.getenv('LOCATIONS')
+    if raw_locations and raw_locations.strip():
+        locations = [l.strip() for l in raw_locations.split(',') if l.strip()]
+    else:
+        locations = [
+            'India', 'Remote', 'Bangalore', 'Hyderabad',
+            'Pune', 'Mumbai', 'Delhi', 'Noida', 'Gurgaon'
+        ]
+
     days_back = int(os.getenv('DAYS_BACK', 1))
     max_jobs_per_source = int(os.getenv('MAX_JOBS_PER_SOURCE', 50))
 
     # Validate email configuration
     if not all([sender_email, sender_password, receiver_email]):
-        print("❌ Error: Email configuration missing in .env file")
-        print("Please set SENDER_EMAIL, SENDER_PASSWORD, and RECEIVER_EMAIL")
-        sys.exit(1)
-
-    # Validate search configuration
-    if not keywords or not keywords[0]:
-        print("❌ Error: No keywords specified in .env file")
+        print("❌ Error: Email configuration missing")
+        print("Please provide SENDER_PASSWORD (or JOBSCRAPER secret)")
         sys.exit(1)
 
     print(f"\n📋 Configuration:")
