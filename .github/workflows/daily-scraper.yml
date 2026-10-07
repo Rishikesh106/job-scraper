@@ -2,9 +2,9 @@ name: Daily Job Scraper
 
 on:
   schedule:
-    # Run every day at 6:00 AM UTC (adjust to your timezone)
-    - cron: '0 6 * * *'
-  workflow_dispatch:  # Allows manual triggering
+    # Runs automatically every morning at 8:00 AM IST (2:30 AM UTC)
+    - cron: '30 2 * * *'
+  workflow_dispatch:  # Optional manual button for testing anytime
 
 jobs:
   scrape-jobs:
