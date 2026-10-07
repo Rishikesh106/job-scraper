@@ -89,6 +89,19 @@ class JobDeduplicator:
             if len(job.title) < 5:
                 continue
 
+            # Strict 24-hour verification: must be today or yesterday
+            if not job.posted_date or job.posted_date in ['OLD', 'UNKNOWN', 'unknown']:
+                continue
+
+            try:
+                job_date = datetime.strptime(job.posted_date, '%Y-%m-%d').date()
+                today = datetime.now().date()
+                yesterday = today - timedelta(days=1)
+                if job_date not in [today, yesterday]:
+                    continue
+            except Exception:
+                continue
+
             quality_jobs.append(job)
 
         removed = len(jobs) - len(quality_jobs)

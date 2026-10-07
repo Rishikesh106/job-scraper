@@ -42,8 +42,8 @@ class NaukriScraper(BaseScraper):
         # Format keyword for URL
         keyword_formatted = keyword.replace(' ', '-')
 
-        # Naukri URL format
-        url = f"{self.base_url}/{keyword_formatted}-jobs?experience=0"
+        # Naukri URL format with jobAge=1 for last 24 hours
+        url = f"{self.base_url}/{keyword_formatted}-jobs?experience=0&jobAge=1"
 
         try:
             response = requests.get(url, headers=self.headers, timeout=10)
@@ -119,34 +119,34 @@ class NaukriScraper(BaseScraper):
 
     def _parse_date(self, date_text: str) -> str:
         """Parse date from text like 'Posted 1 day ago' or 'Posted today'"""
-        date_text = date_text.lower()
+        date_text = date_text.lower().strip()
 
-        if 'today' in date_text or 'few hours ago' in date_text:
+        # Older than 24 hours patterns - immediately mark as OLD
+        if any(term in date_text for term in ['2 days ago', '3 days ago', '4 days ago', '5 days ago', '6 days ago', 'week', 'month', '30+']):
+            return "OLD"
+
+        days_match = re.search(r'(\d+)\s*days?\s*ago', date_text)
+        if days_match and int(days_match.group(1)) >= 2:
+            return "OLD"
+
+        if 'today' in date_text or 'few hours ago' in date_text or 'just now' in date_text or 'hour' in date_text or 'minute' in date_text:
             return datetime.now().strftime('%Y-%m-%d')
         elif '1 day ago' in date_text or 'yesterday' in date_text:
             return (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
-        elif 'days ago' in date_text:
-            days = re.findall(r'(\d+)\s*days ago', date_text)
-            if days:
-                return (datetime.now() - timedelta(days=int(days[0]))).strftime('%Y-%m-%d')
 
-        return datetime.now().strftime('%Y-%m-%d')
+        return "UNKNOWN"
 
     def _is_valid_job(self, job: JobPosting) -> bool:
         """Check if job meets criteria"""
+        # Strict 24-hour verification
+        if not self.is_posted_within_24_hours(job.posted_date):
+            return False
+
         # Check if technical and fresher-friendly
         if not self.is_technical_role(job.title, job.description):
             return False
 
         if not self.is_fresher_role(job.title, job.description):
             return False
-
-        # Check date
-        try:
-            job_date = datetime.strptime(job.posted_date, '%Y-%m-%d')
-            if job_date < self.cutoff_date:
-                return False
-        except:
-            pass  # If date parsing fails, include the job
 
         return True

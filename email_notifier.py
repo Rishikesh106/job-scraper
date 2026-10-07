@@ -162,16 +162,39 @@ class EmailNotifier:
                     color: #27ae60;
                     font-weight: 500;
                 }}
+                .fresh-badge {{
+                    display: inline-block;
+                    background-color: #ecfdf5;
+                    color: #047857;
+                    font-size: 11px;
+                    font-weight: 700;
+                    padding: 2px 8px;
+                    border-radius: 10px;
+                    border: 1px solid #a7f3d0;
+                    margin-left: 6px;
+                    vertical-align: middle;
+                }}
+                .button-group {{
+                    margin-top: 14px;
+                }}
                 .apply-btn {{
                     display: inline-block;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    padding: 10px 25px;
+                    padding: 9px 18px;
                     text-decoration: none;
-                    border-radius: 5px;
-                    margin-top: 15px;
-                    font-weight: bold;
+                    border-radius: 6px;
+                    font-weight: 600;
+                    font-size: 13px;
+                    margin-right: 8px;
+                    margin-bottom: 6px;
                     transition: transform 0.2s;
+                }}
+                .apply-source-btn {{
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: #ffffff !important;
+                }}
+                .apply-career-btn {{
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                    color: #ffffff !important;
                 }}
                 .apply-btn:hover {{
                     transform: translateY(-2px);
@@ -194,12 +217,12 @@ class EmailNotifier:
         <body>
             <div class="header">
                 <h1>🎯 Your Daily Tech Job Alert</h1>
-                <p>{datetime.now().strftime('%A, %B %d, %Y')}</p>
+                <p>{datetime.now().strftime('%A, %B %d, %Y')} • Strictly Posted in the Last 24 Hours</p>
             </div>
 
             <div class="stats">
                 <h2>{len(jobs)}</h2>
-                <p>New opportunities found in the last 24 hours</p>
+                <p>Fresh opportunities posted within the last 24 hours</p>
             </div>
         """
 
@@ -213,17 +236,22 @@ class EmailNotifier:
             """
 
             for job in source_jobs:
+                careers_url = getattr(job, 'company_careers_url', job.url)
                 html += f"""
                 <div class="job-card">
                     <div class="job-title">
                         <a href="{job.url}" target="_blank">{job.title}</a>
+                        <span class="fresh-badge">⚡ &lt; 24h</span>
                     </div>
-                    <div class="job-company">🏢 {job.company}</div>
+                    <div class="job-company">🏢 <strong>{job.company}</strong></div>
                     <div class="job-details">
                         <span class="job-location">📍 {job.location}</span>
                         <span class="job-date">🕒 Posted: {job.posted_date}</span>
                     </div>
-                    <a href="{job.url}" target="_blank" class="apply-btn">Apply Now →</a>
+                    <div class="button-group">
+                        <a href="{job.url}" target="_blank" class="apply-btn apply-source-btn">Apply on {job.source} →</a>
+                        <a href="{careers_url}" target="_blank" class="apply-btn apply-career-btn">🏢 Company Career Page →</a>
+                    </div>
                 </div>
                 """
 

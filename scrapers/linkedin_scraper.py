@@ -96,14 +96,22 @@ class LinkedInScraper(BaseScraper):
             location = self.clean_text(location_elem.get_text()) if location_elem else "Not specified"
 
             # Posted date
-            date_elem = card.find('time', class_='job-search-card__listdate')
-            posted_date = date_elem.get('datetime', '') if date_elem else datetime.now().strftime('%Y-%m-%d')
+            date_elem = card.find('time', class_=lambda c: c and 'job-search-card__listdate' in c)
+            posted_text = self.clean_text(date_elem.get_text()).lower() if date_elem else ""
+            posted_date = date_elem.get('datetime', '') if date_elem else ""
 
-            # Convert to standard format if it's an ISO date
-            if posted_date and 'T' in posted_date:
-                posted_date = posted_date.split('T')[0]
-            elif not posted_date:
+            # Check for older than 24h in text
+            if any(term in posted_text for term in ['2 days ago', '3 days ago', 'week', 'month']):
+                posted_date = "OLD"
+            elif any(term in posted_text for term in ['hour', 'minute', 'today', 'just now']):
                 posted_date = datetime.now().strftime('%Y-%m-%d')
+            elif '1 day ago' in posted_text or 'yesterday' in posted_text:
+                posted_date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+            elif posted_date:
+                if 'T' in posted_date:
+                    posted_date = posted_date.split('T')[0]
+            else:
+                posted_date = "UNKNOWN"
 
             return JobPosting(
                 title=title,
@@ -121,19 +129,15 @@ class LinkedInScraper(BaseScraper):
 
     def _is_valid_job(self, job: JobPosting) -> bool:
         """Check if job meets criteria"""
+        # Strict 24-hour verification
+        if not self.is_posted_within_24_hours(job.posted_date):
+            return False
+
         # Check if technical and fresher-friendly
         if not self.is_technical_role(job.title, job.description):
             return False
 
         if not self.is_fresher_role(job.title, job.description):
             return False
-
-        # Check date
-        try:
-            job_date = datetime.strptime(job.posted_date, '%Y-%m-%d')
-            if job_date < self.cutoff_date:
-                return False
-        except:
-            pass  # If date parsing fails, include the job
 
         return True

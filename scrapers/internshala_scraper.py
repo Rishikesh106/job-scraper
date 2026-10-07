@@ -131,33 +131,31 @@ class IntershalaScraper(BaseScraper):
 
     def _parse_date(self, date_text: str) -> str:
         """Parse date from text"""
-        date_text = date_text.lower()
+        date_text = date_text.lower().strip()
 
-        if 'today' in date_text or 'just now' in date_text:
+        # Reject explicitly older dates
+        if any(term in date_text for term in ['2 days ago', '3 days ago', '4 days ago', '5 days ago', 'week', 'month']):
+            return "OLD"
+
+        days_match = re.search(r'(\d+)\s*days?\s*ago', date_text)
+        if days_match and int(days_match.group(1)) >= 2:
+            return "OLD"
+
+        if 'today' in date_text or 'just now' in date_text or 'few hours ago' in date_text or 'hour' in date_text or 'minute' in date_text:
             return datetime.now().strftime('%Y-%m-%d')
         elif '1 day ago' in date_text or 'yesterday' in date_text:
             return (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
-        elif 'days ago' in date_text:
-            days = re.findall(r'(\d+)\s*days ago', date_text)
-            if days:
-                return (datetime.now() - timedelta(days=int(days[0]))).strftime('%Y-%m-%d')
-        elif 'week ago' in date_text:
-            return (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
 
-        return datetime.now().strftime('%Y-%m-%d')
+        return "UNKNOWN"
 
     def _is_valid_job(self, job: JobPosting) -> bool:
         """Check if job meets criteria"""
+        # Strict 24-hour verification
+        if not self.is_posted_within_24_hours(job.posted_date):
+            return False
+
         # Internshala is already focused on freshers, but we still filter
         if not self.is_technical_role(job.title, job.description):
             return False
-
-        # Check date
-        try:
-            job_date = datetime.strptime(job.posted_date, '%Y-%m-%d')
-            if job_date < self.cutoff_date:
-                return False
-        except:
-            pass
 
         return True
