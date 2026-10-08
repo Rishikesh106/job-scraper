@@ -308,3 +308,99 @@ class EmailNotifier:
         except Exception as e:
             print(f"[Email] Error sending error notification: {str(e)}")
             return False
+
+    def send_no_jobs_notification(self, keywords_count: int = 0, locations_count: int = 0) -> bool:
+        """Send daily confirmation email when no new matching jobs were found"""
+        try:
+            msg = MIMEMultipart()
+            msg['From'] = self.sender_email
+            msg['To'] = self.receiver_email
+            msg['Subject'] = f"ℹ️ Daily Job Scraper Status: 0 New Postings Today - {datetime.now().strftime('%B %d, %Y')}"
+
+            body = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {{
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        line-height: 1.6;
+                        color: #333;
+                        max-width: 650px;
+                        margin: 0 auto;
+                        padding: 20px;
+                        background-color: #f8fafc;
+                    }}
+                    .card {{
+                        background: white;
+                        border-radius: 10px;
+                        padding: 30px;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                        border-top: 4px solid #6366f1;
+                    }}
+                    .title {{
+                        color: #1e293b;
+                        font-size: 22px;
+                        margin-top: 0;
+                    }}
+                    .status-pill {{
+                        display: inline-block;
+                        background: #ecfdf5;
+                        color: #065f46;
+                        padding: 4px 12px;
+                        border-radius: 9999px;
+                        font-size: 13px;
+                        font-weight: 600;
+                        margin-bottom: 15px;
+                    }}
+                    .meta-box {{
+                        background: #f1f5f9;
+                        border-radius: 8px;
+                        padding: 15px;
+                        margin: 20px 0;
+                        font-size: 14px;
+                        color: #475569;
+                    }}
+                    .footer {{
+                        font-size: 12px;
+                        color: #94a3b8;
+                        margin-top: 25px;
+                        text-align: center;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <span class="status-pill">✓ Automation Executed Successfully</span>
+                    <h2 class="title">Daily Job Scraper - Daily Run Report</h2>
+                    <p>Good morning! Your automated job scraper completed its scheduled run today on <strong>{datetime.now().strftime('%A, %B %d, %Y at %I:%M %p')}</strong>.</p>
+                    
+                    <div class="meta-box">
+                        <p style="margin: 0 0 6px 0;"><strong>🔍 Summary:</strong></p>
+                        <p style="margin: 0;">We actively scanned LinkedIn, Internshala, and target tech career portals for your technical roles ({keywords_count} keyword tracks across {locations_count} locations).</p>
+                        <p style="margin: 8px 0 0 0;">✨ <strong>Result:</strong> All current postings were either already sent to you in earlier alerts (cached) or posted more than 24 hours ago.</p>
+                    </div>
+
+                    <p>No duplicate or stale jobs were sent to keep your inbox clean. As soon as newly posted roles match your preferences in the next cycle, you will receive full job cards and direct career links!</p>
+
+                    <div class="footer">
+                        Automated Daily Job Notification System • Rishikesh Job Scraper
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            msg.attach(MIMEText(body, 'html'))
+
+            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                server.starttls()
+                server.login(self.sender_email, self.sender_password)
+                server.send_message(msg)
+
+            print(f"[Email] Successfully sent '0 new jobs' daily status email")
+            return True
+
+        except Exception as e:
+            print(f"[Email] Error sending daily status email: {str(e)}")
+            return False

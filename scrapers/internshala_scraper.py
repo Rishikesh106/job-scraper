@@ -74,10 +74,7 @@ class IntershalaScraper(BaseScraper):
         """Parse individual job card"""
         try:
             # Title and URL
-            title_elem = card.find('h3', class_='job-internship-name')
-            if not title_elem:
-                title_elem = card.find('div', class_='job_name')
-
+            title_elem = card.find(['h2', 'h3'], class_='job-internship-name') or card.find('div', class_='job_name')
             if not title_elem:
                 return None
 
@@ -87,29 +84,27 @@ class IntershalaScraper(BaseScraper):
 
             title = self.clean_text(title_link.get_text())
             url = title_link.get('href', '')
+            if not url:
+                url = card.get('data-href', '')
             if url and not url.startswith('http'):
                 url = self.base_url + url
 
             # Company
-            company_elem = card.find('p', class_='company-name')
-            if not company_elem:
-                company_elem = card.find('div', class_='company_name')
+            company_elem = card.find('p', class_='company-name') or card.find('div', class_='company_name') or card.find('a', class_='link_display_like_text')
             company = self.clean_text(company_elem.get_text()) if company_elem else "Unknown"
 
             # Location
-            location_elem = card.find('div', id=lambda x: x and 'location_names' in x)
-            if not location_elem:
-                location_elem = card.find('span', class_='location_link')
+            location_elem = card.find('p', class_=lambda c: c and 'locations' in c) or card.find('div', id=lambda x: x and 'location_names' in x) or card.find('span', class_='location_link')
             location = self.clean_text(location_elem.get_text()) if location_elem else "Not specified"
 
             # Posted date
-            posted_elem = card.find('div', class_='status')
+            posted_elem = card.find('div', class_=lambda c: c and any(k in c for k in ['status-info', 'status-success', 'status']))
             posted_text = self.clean_text(posted_elem.get_text()) if posted_elem else ""
             posted_date = self._parse_date(posted_text)
 
             # Description/Tags
             desc_parts = []
-            skills_elem = card.find('div', class_='tags_container')
+            skills_elem = card.find('div', class_=lambda c: c and any(k in c for k in ['job_skills', 'tags_container', 'skill_container']))
             if skills_elem:
                 desc_parts.append(self.clean_text(skills_elem.get_text()))
 

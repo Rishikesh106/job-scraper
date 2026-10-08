@@ -113,10 +113,9 @@ def main():
                 sys.exit(1)
         else:
             print("\n💤 No new jobs found today")
-
-            # Send a brief notification
+            print("📧 Sending daily status confirmation email...")
             notifier = EmailNotifier(sender_email, sender_password, receiver_email)
-            # We could optionally send a "no jobs today" email here
+            notifier.send_no_jobs_notification(len(keywords), len(locations))
 
         print("\n" + "=" * 60)
         print("✅ Job scraper completed successfully!")

@@ -2,9 +2,11 @@ name: Daily Job Scraper
 
 on:
   schedule:
-    # Runs automatically every morning at 8:00 AM IST (2:30 AM UTC)
-    - cron: '30 2 * * *'
-  workflow_dispatch:  # Optional manual button for testing anytime
+    # 7:50 AM IST (2:20 AM UTC) - Off-peak minute avoids GitHub dropped queues
+    - cron: '20 2 * * *'
+    # 8:20 AM IST (2:50 AM UTC) - Backup run if morning queue was delayed
+    - cron: '50 2 * * *'
+  workflow_dispatch:  # Manual button for testing anytime
 
 jobs:
   scrape-jobs:
@@ -18,6 +20,14 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
+
+    - name: Restore cache
+      uses: actions/cache@v4
+      with:
+        path: jobs_cache.json
+        key: jobs-cache-${{ github.run_id }}
+        restore-keys: |
+          jobs-cache-
 
     - name: Install dependencies
       run: |
@@ -38,7 +48,7 @@ jobs:
       run: |
         python main.py
 
-    - name: Upload cache
+    - name: Upload cache artifact
       uses: actions/upload-artifact@v4
       if: always()
       with:
