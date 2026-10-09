@@ -47,7 +47,16 @@ KNOWN_CAREER_PORTALS = {
     "morgan stanley": "https://www.morganstanley.com/people-opportunities/careers",
     "wells fargo": "https://www.wellsfargojobs.com/",
     "sap": "https://jobs.sap.com/",
-    "siemens": "https://jobs.siemens.com/careers"
+    "siemens": "https://jobs.siemens.com/careers",
+    "palo alto networks": "https://jobs.paloaltonetworks.com/en/",
+    "crowdstrike": "https://crowdstrike.wd5.myworkdayjobs.com/crowdstrikecareers",
+    "fortinet": "https://www.fortinet.com/corporate/careers",
+    "zscaler": "https://www.zscaler.com/careers",
+    "qualys": "https://www.qualys.com/company/careers/",
+    "rapid7": "https://www.rapid7.com/about/careers/",
+    "splunk": "https://www.splunk.com/en_us/careers.html",
+    "checkpoint": "https://careers.checkpoint.com/",
+    "mandiant": "https://www.mandiant.com/company/careers"
 }
 
 class JobPosting:
@@ -130,64 +139,116 @@ class BaseScraper(ABC):
         """Scrape jobs from the source. Must be implemented by subclasses."""
         pass
 
-    def is_technical_role(self, title: str, description: str = "") -> bool:
-        """Check if the job is a technical/CS role"""
+    @staticmethod
+    def is_technical_role(title: str, description: str = "") -> bool:
+        """Check if the job is a technical/CS or Cybersecurity role"""
         technical_keywords = [
+            # Software Development & Engineering
             'software', 'developer', 'engineer', 'programmer', 'python', 'java',
-            'javascript', 'react', 'angular', 'node', 'backend', 'frontend',
-            'full stack', 'fullstack', 'data', 'machine learning', 'ml', 'ai',
-            'devops', 'cloud', 'aws', 'azure', 'database', 'sql', 'android',
-            'ios', 'mobile', 'web', 'api', 'tech', 'sde', 'swe', 'qa', 'test'
+            'javascript', 'typescript', 'react', 'angular', 'vue', 'node', 'nodejs',
+            'backend', 'frontend', 'full stack', 'fullstack', 'web development', 'web developer',
+            'sde', 'swe', 'mobile developer', 'android', 'ios', 'flutter',
+            # Data, AI & Machine Learning
+            'data analyst', 'data engineer', 'data science', 'machine learning', 'ml', 'ai', 'artificial intelligence',
+            # DevOps, Cloud & QA
+            'devops', 'cloud', 'aws', 'azure', 'gcp', 'database', 'sql', 'qa', 'test engineer', 'quality assurance',
+            # Cybersecurity & Information Security
+            'cyber', 'cybersecurity', 'cyber security', 'infosec', 'information security',
+            'security analyst', 'security engineer', 'soc analyst', 'soc', 'vulnerability',
+            'penetration tester', 'pentest', 'ethical hacker', 'network security',
+            'incident response', 'iam', 'identity and access', 'threat', 'appsec', 'application security',
+            'devsecops', 'siem'
         ]
 
-        # Exclude non-technical roles
-        exclude_keywords = [
-            'sales', 'marketing', 'manager', 'hr', 'recruiter', 'business development',
-            'content writer', 'graphic design', 'accountant', 'finance', 'operations'
+        title_lower = title.lower()
+        text_lower = (title + " " + description).lower()
+
+        # Non-tech roles to explicitly exclude regardless of company description
+        non_tech_roles = [
+            'accounts receivable', 'accounts payable', 'accounting', 'accountant', 'finance',
+            'sales executive', 'sales manager', 'sales representative', 'telecaller', 'bpo',
+            'customer support', 'customer service', 'customer success', 'hr executive',
+            'recruiter', 'office manager', 'executive assistant', 'content writer', 'graphic designer'
         ]
-
-        text = (title + " " + description).lower()
-
-        # Check exclusions first
-        for exclude in exclude_keywords:
-            if exclude in text:
+        for nt in non_tech_roles:
+            if nt in title_lower and not any(k in title_lower for k in ['developer', 'engineer', 'security', 'cyber', 'programmer']):
                 return False
 
-        # Check if it's technical
+        # 1. Match technical keywords directly in the title with word boundaries
         for keyword in technical_keywords:
-            if keyword in text:
+            if re.search(r'\b' + re.escape(keyword) + r'\b', title_lower):
                 return True
+
+        # 2. Match role indicator in title + technical keywords in description
+        role_indicators = ['developer', 'engineer', 'programmer', 'coder', 'sde', 'swe', 'security']
+        if any(re.search(r'\b' + re.escape(r) + r'\b', title_lower) for r in role_indicators):
+            for keyword in technical_keywords:
+                if re.search(r'\b' + re.escape(keyword) + r'\b', text_lower):
+                    return True
 
         return False
 
-    def is_fresher_role(self, title: str, description: str = "") -> bool:
-        """Check if the job is suitable for freshers"""
-        text = (title + " " + description).lower()
-
-        # Positive indicators for fresher roles
-        fresher_indicators = [
-            'fresher', 'entry level', 'entry-level', 'graduate', 'trainee',
-            '0-1 year', '0-2 year', '0 year', 'recent graduate', 'new grad',
-            'junior', 'associate', 'beginner'
-        ]
-
-        # Check for fresher indicators
-        for indicator in fresher_indicators:
-            if indicator in text:
-                return True
-
-        # Check for experience requirements that exclude freshers
-        senior_indicators = [
-            '3+ years', '4+ years', '5+ years', 'senior', 'lead', 'principal',
-            'staff engineer', 'architect'
-        ]
-
-        for indicator in senior_indicators:
-            if indicator in text:
+    @staticmethod
+    def is_fresher_role(title: str, description: str = "", experience_text: str = "", min_years: int = None) -> bool:
+        """Strictly verify if the job is for 0 years experience or freshers only"""
+        # 1. If explicit numeric min_years is provided
+        if min_years is not None:
+            if min_years > 0:
                 return False
 
-        # If no clear indication, assume it might be suitable
-        return True
+        title_clean = title.strip()
+        full_text = f"{title_clean} {experience_text} {description}".lower()
+
+        # 2. Strict Senior / Non-Fresher Exclusions in Title
+        # Exclude Roman numerals II, III, IV, V or numbers 2, 3, 4, 5 denoting non-entry levels
+        # (Note: I / 1 / Trainee / Junior / Associate / GET are entry levels)
+        if re.search(r'\b(ii|iii|iv|v|vi|2|3|4|5)\b', title_clean, re.I):
+            return False
+
+        # Exclude senior and management keywords in title
+        senior_title_pattern = r'\b(sr|sr\.|senior|lead|principal|staff|architect|manager|head|director|vp|vice president|specialist|experienced|mid-level|mid level|intermediate|expert|team lead|tech lead)\b'
+        if re.search(senior_title_pattern, title_clean, re.I):
+            return False
+
+        # 3. Check for Experience Requirements > 0 anywhere in text
+        # Reject e.g., "1+ years", "2+ yrs", "3+ years", "1 to 3 years", "1-3 years", "2-5 yrs", "min 1 year"
+        if re.search(r'\b([1-9]\d*)\s*(?:\+|plus)\s*(?:years?|yrs?)', full_text):
+            return False
+        if re.search(r'\b([1-9]\d*)\s*(?:to|-)\s*\d+\s*(?:years?|yrs?)', full_text):
+            return False
+        if re.search(r'\b(?:min|minimum|at least)\s*([1-9]\d*)\s*(?:years?|yrs?)', full_text):
+            return False
+        if re.search(r'\b([1-9]\d*)\s*(?:years?|yrs?)\s*(?:of\s*)?experience', full_text):
+            return False
+        if re.search(r'\b([1-9]\d*)\s*year\(s\)', full_text):
+            return False
+
+        # 4. If min_years was explicitly confirmed as 0
+        if min_years == 0:
+            return True
+
+        # 5. Positive Fresher / 0 Years Indicators
+        fresher_indicators = [
+            r'\bfresher\b', r'\bfreshers\b',
+            r'\bentry\s*level\b', r'\bentry-level\b',
+            r'\bgraduate\b', r'\bgraduate\s+engineer\s+trainee\b', r'\bget\b',
+            r'\btrainee\b', r'\bintern\b', r'\binternship\b',
+            r'\bassociate\b', r'\bjunior\b', r'\bjr\b', r'\bjr\.\b',
+            r'\bapprentice\b', r'\bapprenticeship\b',
+            r'\b0\s*years?\b', r'\b0-0\s*years?\b', r'\b0-1\s*years?\b', r'\b0\s*to\s*1\s*years?\b',
+            r'\b0\s*yrs?\b', r'\b0-0\s*yrs?\b', r'\b0-1\s*yrs?\b',
+            r'\bno\s*experience\s*required\b', r'\bno\s*prior\s*experience\b',
+            r'\brecent\s*graduate\b', r'\bnew\s*grad\b', r'\bcollege\s*graduate\b',
+            r'\bcampus\b', r'\b2024\s*batch\b', r'\b2025\s*batch\b', r'\b2026\s*batch\b',
+            r'\bbatch\s*of\s*2024\b', r'\bbatch\s*of\s*2025\b', r'\bbatch\s*of\s*2026\b'
+        ]
+
+        for pattern in fresher_indicators:
+            if re.search(pattern, full_text):
+                return True
+
+        # STRICT: If no clear fresher indicator, REJECT
+        return False
 
     def clean_text(self, text: str) -> str:
         """Clean and normalize text"""

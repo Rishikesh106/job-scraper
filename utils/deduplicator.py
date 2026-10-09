@@ -1,5 +1,5 @@
 from typing import List, Set
-from scrapers.base_scraper import JobPosting
+from scrapers.base_scraper import JobPosting, BaseScraper
 import json
 from datetime import datetime, timedelta
 import os
@@ -72,7 +72,7 @@ class JobDeduplicator:
         return unique_jobs
 
     def filter_by_quality(self, jobs: List[JobPosting]) -> List[JobPosting]:
-        """Filter out low-quality or suspicious job postings"""
+        """Filter out low-quality, non-technical, or experienced (1-5+ years) job postings"""
         quality_jobs = []
 
         for job in jobs:
@@ -102,10 +102,18 @@ class JobDeduplicator:
             except Exception:
                 continue
 
+            # Strict Technical / Cybersecurity check
+            if not BaseScraper.is_technical_role(job.title, job.description):
+                continue
+
+            # Strict Fresher / 0 Years check (rejects any 1-5+ years experience)
+            if not BaseScraper.is_fresher_role(job.title, job.description):
+                continue
+
             quality_jobs.append(job)
 
         removed = len(jobs) - len(quality_jobs)
         if removed > 0:
-            print(f"[Deduplicator] Filtered out {removed} low-quality jobs")
+            print(f"[Deduplicator] Filtered out {removed} low-quality / non-fresher jobs")
 
         return quality_jobs

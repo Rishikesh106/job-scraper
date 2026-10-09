@@ -13,14 +13,14 @@ if sys.platform == "win32":
         sys.stderr.reconfigure(encoding='utf-8')
 
 from dotenv import load_dotenv
-from scrapers import NaukriScraper, LinkedInScraper, IntershalaScraper
+from scrapers import NaukriScraper, LinkedInScraper, IntershalaScraper, WellfoundScraper
 from utils import JobDeduplicator
 from email_notifier import EmailNotifier
 
 def main():
     """Main function to orchestrate job scraping"""
     print("=" * 60)
-    print("🚀 Starting Job Scraper")
+    print("🚀 Starting Job Scraper (Strictly 0 Years / Freshers & Cybersecurity)")
     print("=" * 60)
 
     # Load environment variables
@@ -31,15 +31,17 @@ def main():
     sender_password = os.getenv('SENDER_PASSWORD') or os.getenv('JOBSCRAPER')
     receiver_email = os.getenv('RECEIVER_EMAIL') or sender_email
 
-    # Job search preferences with defaults
+    # Job search preferences with defaults (Tech + Cybersecurity for 0-exp freshers)
     raw_keywords = os.getenv('KEYWORDS')
     if raw_keywords and raw_keywords.strip():
         keywords = [k.strip() for k in raw_keywords.split(',') if k.strip()]
     else:
         keywords = [
-            'software developer', 'software engineer', 'python developer',
-            'full stack developer', 'backend developer', 'frontend developer',
-            'data analyst', 'machine learning'
+            'fresher software engineer', 'junior software developer', 'associate software engineer',
+            'cybersecurity fresher', 'cyber security intern', 'junior security analyst',
+            'information security fresher', 'soc analyst fresher', 'entry level cybersecurity',
+            'junior python developer', 'junior full stack developer', 'junior backend developer',
+            'junior frontend developer', 'junior data analyst', 'graduate engineer trainee'
         ]
 
     raw_locations = os.getenv('LOCATIONS')
@@ -61,18 +63,20 @@ def main():
         sys.exit(1)
 
     print(f"\n📋 Configuration:")
-    print(f"   Keywords: {len(keywords)} items")
+    print(f"   Keywords: {len(keywords)} items (Tech & Cybersecurity)")
     print(f"   Locations: {len(locations)} items")
     print(f"   Days back: {days_back}")
     print(f"   Max jobs per source: {max_jobs_per_source}")
+    print(f"   Experience: STRICTLY 0 Years / Freshers Only")
     print()
 
     try:
-        # Initialize scrapers
+        # Initialize scrapers (Wellfound first for fast-responding startup roles)
         scrapers = [
-            NaukriScraper(keywords, locations, days_back, max_jobs_per_source),
-            LinkedInScraper(keywords, locations, days_back, max_jobs_per_source),
+            WellfoundScraper(keywords, locations, days_back, max_jobs_per_source),
             IntershalaScraper(keywords, locations, days_back, max_jobs_per_source),
+            LinkedInScraper(keywords, locations, days_back, max_jobs_per_source),
+            NaukriScraper(keywords, locations, days_back, max_jobs_per_source),
         ]
 
         # Collect all jobs

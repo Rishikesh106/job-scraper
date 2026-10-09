@@ -7,71 +7,87 @@ import re
 from .base_scraper import BaseScraper, JobPosting
 
 class IntershalaScraper(BaseScraper):
-    """Scraper for Internshala (focuses on entry-level jobs)"""
+    """Scraper for Internshala (strictly 0 years experience / freshers & tech/cybersecurity internships)"""
 
     def __init__(self, keywords: List[str], locations: List[str], days_back: int = 1, max_jobs: int = 50):
         super().__init__(keywords, locations, days_back)
         self.base_url = "https://internshala.com"
         self.max_jobs = max_jobs
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
         }
 
     def scrape(self) -> List[JobPosting]:
         """Scrape jobs from Internshala"""
         all_jobs = []
+        seen_urls = set()
 
-        print(f"[Internshala] Starting scrape for keywords: {self.keywords[:3]}...")
+        # Internshala specific slugs for tech & cybersecurity
+        search_slugs = [
+            ('jobs', 'cyber-security'),
+            ('jobs', 'software-development'),
+            ('jobs', 'python'),
+            ('jobs', 'data-science'),
+            ('jobs', 'information-security'),
+            ('internships', 'cyber-security'),
+            ('internships', 'computer-science'),
+            ('internships', 'python-django'),
+            ('jobs', 'fresher')
+        ]
 
-        # Internshala has both internships and fresher jobs
-        for keyword in self.keywords[:3]:
+        print(f"[Internshala] Starting scrape for 0-exp fresher jobs & cybersecurity roles...")
+
+        for category, slug in search_slugs:
             try:
-                # Search for jobs (not internships)
-                jobs = self._scrape_keyword(keyword, job_type='job')
-                all_jobs.extend(jobs)
-                time.sleep(2)
+                jobs = self._scrape_slug(category, slug)
+                for job in jobs:
+                    if job.url not in seen_urls:
+                        seen_urls.add(job.url)
+                        all_jobs.append(job)
+                        if len(all_jobs) >= self.max_jobs:
+                            break
+                if len(all_jobs) >= self.max_jobs:
+                    break
+                time.sleep(1.5)
             except Exception as e:
-                print(f"[Internshala] Error scraping '{keyword}': {str(e)}")
+                print(f"[Internshala] Error scraping '{slug}': {str(e)}")
                 continue
 
-        print(f"[Internshala] Found {len(all_jobs)} jobs")
+        print(f"[Internshala] Found {len(all_jobs)} strictly fresher/0-exp jobs")
         return all_jobs
 
-    def _scrape_keyword(self, keyword: str, job_type: str = 'job') -> List[JobPosting]:
-        """Scrape jobs for a specific keyword"""
+    def _scrape_slug(self, category: str, slug: str) -> List[JobPosting]:
+        """Scrape jobs or internships for a specific slug"""
         jobs = []
-
-        # Format keyword for URL
-        keyword_formatted = keyword.replace(' ', '%20')
-
-        # Internshala URL format for jobs
-        url = f"{self.base_url}/jobs/{keyword_formatted}-jobs"
+        if category == 'jobs':
+            url = f"{self.base_url}/jobs/{slug}-jobs"
+        else:
+            url = f"{self.base_url}/internships/{slug}-internship"
 
         try:
-            response = requests.get(url, headers=self.headers, timeout=10)
-            response.raise_for_status()
+            response = requests.get(url, headers=self.headers, timeout=12)
+            if response.status_code != 200:
+                return jobs
 
             soup = BeautifulSoup(response.content, 'html.parser')
-
-            # Find job listings (Internshala uses specific div classes)
             job_cards = soup.find_all('div', class_='individual_internship')
 
             for card in job_cards[:self.max_jobs]:
                 try:
-                    job = self._parse_job_card(card)
+                    job = self._parse_job_card(card, category)
                     if job and self._is_valid_job(job):
                         jobs.append(job)
                 except Exception as e:
-                    print(f"[Internshala] Error parsing job card: {str(e)}")
                     continue
 
         except requests.RequestException as e:
-            print(f"[Internshala] Request error for '{keyword}': {str(e)}")
+            print(f"[Internshala] Request error for '{slug}': {str(e)}")
 
         return jobs
 
-    def _parse_job_card(self, card) -> JobPosting:
-        """Parse individual job card"""
+    def _parse_job_card(self, card, category: str = 'jobs') -> JobPosting:
+        """Parse individual job card with strict experience verification"""
         try:
             # Title and URL
             title_elem = card.find(['h2', 'h3'], class_='job-internship-name') or card.find('div', class_='job_name')
@@ -102,13 +118,26 @@ class IntershalaScraper(BaseScraper):
             posted_text = self.clean_text(posted_elem.get_text()) if posted_elem else ""
             posted_date = self._parse_date(posted_text)
 
+            # Experience field extraction from briefcase icon
+            exp_i = card.find('i', class_=lambda c: c and 'briefcase' in c)
+            experience = self.clean_text(exp_i.parent.get_text()) if exp_i else ""
+
+            # STRICT REJECTION: If experience requires 1 or more years, reject immediately
+            if experience and re.search(r'\b([1-9]\d*)\s*year\(s\)', experience, re.I):
+                return None
+
             # Description/Tags
             desc_parts = []
+            if experience:
+                desc_parts.append(f"Experience: {experience}")
+            elif category == 'internships':
+                desc_parts.append("Internship (0 years experience / Student / Fresher)")
+
             skills_elem = card.find('div', class_=lambda c: c and any(k in c for k in ['job_skills', 'tags_container', 'skill_container']))
             if skills_elem:
                 desc_parts.append(self.clean_text(skills_elem.get_text()))
 
-            description = " ".join(desc_parts)
+            description = " | ".join(desc_parts)
 
             return JobPosting(
                 title=title,
@@ -121,7 +150,6 @@ class IntershalaScraper(BaseScraper):
             )
 
         except Exception as e:
-            print(f"[Internshala] Parse error: {str(e)}")
             return None
 
     def _parse_date(self, date_text: str) -> str:
@@ -149,8 +177,12 @@ class IntershalaScraper(BaseScraper):
         if not self.is_posted_within_24_hours(job.posted_date):
             return False
 
-        # Internshala is already focused on freshers, but we still filter
+        # Technical / Cybersecurity role check
         if not self.is_technical_role(job.title, job.description):
+            return False
+
+        # Strict fresher / 0 years check
+        if not self.is_fresher_role(job.title, job.description, experience_text=job.description):
             return False
 
         return True

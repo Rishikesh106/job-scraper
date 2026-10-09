@@ -26,7 +26,7 @@ class EmailNotifier:
             msg = MIMEMultipart('alternative')
             msg['From'] = self.sender_email
             msg['To'] = self.receiver_email
-            msg['Subject'] = f"🎯 {len(jobs)} New Tech Jobs for You - {datetime.now().strftime('%B %d, %Y')}"
+            msg['Subject'] = f"🎯 {len(jobs)} Fresher & 0-Exp Tech / Cybersecurity Jobs - {datetime.now().strftime('%B %d, %Y')}"
 
             # Create HTML email
             html_content = self._create_html_email(jobs)
@@ -72,7 +72,7 @@ class EmailNotifier:
                     background-color: #f5f5f5;
                 }}
                 .header {{
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    background: linear-gradient(135deg, #1e3a8a 0%, #4338ca 50%, #6d28d9 100%);
                     color: white;
                     padding: 30px;
                     border-radius: 10px;
@@ -81,7 +81,7 @@ class EmailNotifier:
                 }}
                 .header h1 {{
                     margin: 0;
-                    font-size: 28px;
+                    font-size: 26px;
                 }}
                 .header p {{
                     margin: 10px 0 0 0;
@@ -97,18 +97,19 @@ class EmailNotifier:
                 }}
                 .stats h2 {{
                     margin: 0;
-                    color: #667eea;
+                    color: #4338ca;
                     font-size: 36px;
                 }}
                 .stats p {{
                     margin: 5px 0 0 0;
                     color: #666;
+                    font-weight: 500;
                 }}
                 .source-section {{
                     margin-bottom: 30px;
                 }}
                 .source-header {{
-                    background: #667eea;
+                    background: #4338ca;
                     color: white;
                     padding: 15px 20px;
                     border-radius: 8px 8px 0 0;
@@ -236,12 +237,13 @@ class EmailNotifier:
             """
 
             for job in source_jobs:
-                careers_url = getattr(job, 'company_careers_url', job.url)
+                wellfound_badge = '<span class="fresh-badge" style="background:#fef3c7; color:#92400e; border-color:#fde68a;">⚡ Fast Response</span>' if job.source == 'Wellfound' else ''
                 html += f"""
                 <div class="job-card">
                     <div class="job-title">
                         <a href="{job.url}" target="_blank">{job.title}</a>
-                        <span class="fresh-badge">⚡ &lt; 24h</span>
+                        <span class="fresh-badge">🎓 0 Yrs / Fresher</span>
+                        {wellfound_badge}
                     </div>
                     <div class="job-company">🏢 <strong>{job.company}</strong></div>
                     <div class="job-details">

@@ -1,18 +1,18 @@
 # 🎯 Automated Job Scraper & Email Notifier
 
-A Python-based job scraper that automatically finds fresh Computer Science and tech job openings from multiple job boards and emails them to you daily. Perfect for freshers looking for their first tech role!
+A Python-based job scraper that automatically finds fresh Computer Science, Tech, and Cybersecurity job openings strictly for freshers and candidates with 0 years of experience, emailing them to you daily.
 
 ## 🌟 Features
 
-- **Multi-Platform Scraping**: Scrapes jobs from Naukri, LinkedIn, and Internshala
-- **Smart Filtering**: 
-  - Only technical/CS roles (filters out sales, marketing, etc.)
-  - Fresher-friendly positions (0-2 years experience)
-  - Posted within last 24 hours
+- **Multi-Platform Scraping**: Scrapes jobs from **Wellfound** (high response startup roles), **Internshala**, **LinkedIn**, and **Naukri**
+- **Strict 0-Year Experience Filtering**: 
+  - Strictly constricts to **0 years of experience / Freshers only** (actively blocks 1-5+ years experienced positions, Senior, II, III, Lead, etc.)
+  - Dedicated support for **Cybersecurity** (SOC Analyst, Infosec, Security Engineer, Pen-testing) and **Tech/CS** roles
+  - Posted within the last 24 hours
 - **Deduplication**: Never see the same job twice
-- **Beautiful Email Alerts**: Professional HTML emails with all job details
+- **Beautiful Email Alerts**: Professional HTML emails with all job details and direct career page links
 - **Automated Daily Run**: Set it and forget it with GitHub Actions
-- **Quality Control**: Filters out spam and low-quality postings
+- **Quality Control**: Filters out spam, non-technical, and low-quality postings
 
 ## 📋 Prerequisites
 
