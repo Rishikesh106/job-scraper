@@ -44,6 +44,8 @@ class EmailNotifier:
 
         except Exception as e:
             print(f"[Email] Error sending email: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def _create_html_email(self, jobs: List[JobPosting]) -> str:
@@ -237,6 +239,7 @@ class EmailNotifier:
             """
 
             for job in source_jobs:
+                careers_url = getattr(job, 'company_careers_url', None) or job.url
                 wellfound_badge = '<span class="fresh-badge" style="background:#fef3c7; color:#92400e; border-color:#fde68a;">⚡ Fast Response</span>' if job.source == 'Wellfound' else ''
                 html += f"""
                 <div class="job-card">
